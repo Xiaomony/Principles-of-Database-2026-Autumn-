@@ -1,0 +1,5 @@
+*.pdf
+*.jar
+*.class
+out/
+.DS_Store
