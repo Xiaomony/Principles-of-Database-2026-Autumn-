@@ -1,0 +1,17 @@
+{
+    "db": {
+        "host": "127.0.0.1",
+        "port": 5432,
+        "username": "admin",
+        "database": "db_principles_project1"
+    },
+    "format": {
+        "enabled": true,
+        "lineWidth": 100,
+        "indentSize": 4,
+        "indentStyle": "spaces",
+        "keywordCase": "upper",
+        "constantCase": "lower",
+        "typeCase": "lower"
+    }
+}
