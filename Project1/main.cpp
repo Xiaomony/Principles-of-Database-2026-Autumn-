@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
     // read binary movie data
     time_counting(true);
     auto loaded_binary_data{read_binary_data("./res/movies.binary")};
-    time_counting(false, "read binary movie data");
+    time_counting(false, "read binary movie data from file");
     // convert binary data to text form
     time_counting(true);
     auto restored_movie_data{convert_binary_to_movie_data(loaded_binary_data)};
