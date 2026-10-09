@@ -2,5 +2,6 @@
 *.jar
 *.class
 *.out
+*.binary
 out/
 .DS_Store
