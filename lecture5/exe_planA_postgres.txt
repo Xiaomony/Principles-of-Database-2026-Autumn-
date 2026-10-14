@@ -1,0 +1,12 @@
+ Seq Scan on movies m  (cost=0.00..19472.55 rows=4472 width=138) (actual time=0.012..23.079 rows=4472.00 loops=1)
+   Filter: (country <> 'us'::bpchar)
+   Rows Removed by Filter: 4732
+   Buffers: shared hit=9016
+   SubPlan 1
+     ->  Seq Scan on countries c  (cost=0.00..4.31 rows=1 width=9) (actual time=0.004..0.005 rows=1.00 loops=4472)
+           Filter: (country_code = m.country)
+           Rows Removed by Filter: 184
+           Buffers: shared hit=8944
+ Planning Time: 0.029 ms
+ Execution Time: 23.179 ms
+(11 rows)

@@ -5,3 +5,4 @@
 *.binary
 out/
 .DS_Store
+/postgres/

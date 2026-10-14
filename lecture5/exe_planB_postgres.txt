@@ -1,0 +1,17 @@
+ Hash Left Join  (cost=6.16..205.22 rows=4472 width=29) (actual time=0.028..0.707 rows=4472.00 loops=1)
+   Hash Cond: (m.country = c.country_code)
+   Buffers: shared hit=74
+   ->  Seq Scan on movies m  (cost=0.00..187.05 rows=4472 width=23) (actual time=0.002..0.332 rows=4472.00 loops=1)
+         Filter: (country <> 'us'::bpchar)
+         Rows Removed by Filter: 4732
+         Buffers: shared hit=72
+   ->  Hash  (cost=3.85..3.85 rows=185 width=12) (actual time=0.021..0.022 rows=185.00 loops=1)
+         Buckets: 1024  Batches: 1  Memory Usage: 16kB
+         Buffers: shared hit=2
+         ->  Seq Scan on countries c  (cost=0.00..3.85 rows=185 width=12) (actual time=0.002..0.008 rows=185.00 loops=1)
+               Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=2
+ Planning Time: 0.060 ms
+ Execution Time: 0.789 ms
+(16 rows)
