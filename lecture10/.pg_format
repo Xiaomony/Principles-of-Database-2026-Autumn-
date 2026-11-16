@@ -1,0 +1,15 @@
+# Indentation
+spaces=4
+tabs=0
+
+# Line width
+wrap-limit=100
+
+# Keyword and type case
+keyword-case=2
+type-case=1
+function-case=0
+ident-case=0
+
+# Other options
+format=text
