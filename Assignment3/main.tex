@@ -1,6 +1,6 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[10pt,a4paper]{article}
 
-\usepackage[margin=2.35cm]{geometry}
+\usepackage[margin=2.15cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{bold-extra}
@@ -9,6 +9,7 @@
 \usepackage{enumitem}
 \usepackage{xcolor}
 \definecolor{darkblue}{HTML}{6394BD}
+\usepackage{xurl}
 \usepackage[colorlinks=true,urlcolor=darkblue,linkcolor=darkblue]{hyperref}
 \usepackage{minted}
 \usepackage{titling}
@@ -17,10 +18,14 @@
 \usepackage{graphicx}
 \usepackage{svg}
 
-\setlist{noitemsep,topsep=3pt}
+\setlist{noitemsep,topsep=1pt,partopsep=0pt,parsep=0pt}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{0.45em}
-\renewcommand{\arraystretch}{1.15}
+\setlength{\parskip}{0.2em}
+\renewcommand{\arraystretch}{1.05}
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{5pt plus 2pt minus 2pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
 
 % endnote
 \let\footnote=\endnote
@@ -28,8 +33,9 @@
 % minted settings
 \usemintedstyle{solarized-light}
 \setminted{
-    fontsize=\small, linenos, numbersep=8pt, frame=single, framerule=0.5pt,
-    framesep=3mm, rulecolor=\color{black}, breaklines, tabsize=4, autogobble
+    fontsize=\footnotesize, linenos, numbersep=6pt, frame=single,
+    framerule=0.5pt, framesep=2mm, rulecolor=\color{black}, breaklines,
+    tabsize=4, autogobble
 }
 \renewcommand{\theFancyVerbLine}{ \sffamily\scriptsize\arabic{FancyVerbLine} }
 \definecolor{inlinebg}{RGB}{230,230,230}
@@ -43,7 +49,7 @@
 \date{}
 \predate{}
 \postdate{}
-\setlength{\droptitle}{-7em}
+\setlength{\droptitle}{-8em}
 
 % document
 \begin{document}
@@ -52,13 +58,16 @@
 \section{Summary}
 
 \begin{itemize}
-    \item Data in the table \mintinline{text}{movies} is located at
+    \item The \mintinline{text}{movies} table is stored in
           \mintinline{text}{/var/lib/postgres/data/base/18587/18604}.
-    \item \textit{The Matrix} is the \textbf{62nd row(tuple)} of the \textbf{9th
-          page} in the file.
-    \item The actual data of this row, \textbf{excuding tuple header}, is
-          located in the range from \texttt{0x13248} bytes offset to
-          \texttt{0x13263} bytes offset in the file.
+    \item \textit{The Matrix} is identified by line pointer \textbf{62} on
+          \textbf{page 9} of the file.
+    \item The row data, \textbf{excluding the tuple header}, occupies the byte
+          range from \texttt{0x13248} to \texttt{0x13263} in the file.
+    \item Binary data file for the \mintinline{text}{movies} table:\\
+          {\fontsize{7pt}{7pt}\url{https://github.com/Xiaomony/Principles-of-Database-2026-Autumn-/blob/main/Assignment3/res/movies_binary_data}}
+    \item Hex dump of the binary data:\\
+          {\fontsize{7pt}{7pt}\url{https://github.com/Xiaomony/Principles-of-Database-2026-Autumn-/blob/main/Assignment3/res/movies_hex_data.txt}}
 \end{itemize}
 
 \section{Environment and Tools}
@@ -85,8 +94,8 @@
 \section{Locating the Target File}
 
 \begin{itemize}
-    \item Use the following sql commands to obtain the relative information of
-          the current database and the table \mintinline{sql}|movies|:
+    \item Use the following SQL commands to obtain metadata for the current
+          database and the \mintinline{sql}|movies| table:
           \begin{minted}{sql}
             SHOW server_version;
             SHOW data_directory;
@@ -105,14 +114,14 @@
                   \bottomrule
               \end{tabular}
           \end{table}
-    \item Find that file in the filesystem:
+    \item Locate the relation file in the filesystem:
           \begin{minted}{console}
             [root]# ls -lsah /var/lib/postgres/data/base/18587/18604
             576K -rw------- 1 postgres postgres 576K Nov 22 11:42 /var/lib/postgres/data/base/18587/18604
           \end{minted}
 
-    \item \textbf{For the security of the OS and database}, we copy the file to
-          somewhere else to analyze:
+    \item To avoid modifying the database file, copy it to a separate location
+          for analysis:
           \begin{minted}{console}
             [root]# cp /var/lib/postgres/data/base/18587/18604 \
             > /home/admin/code/Projects/db_principles/Assignment3/movies_binary_data
@@ -125,13 +134,12 @@
 \section{Page and Tuple Inspection}
 
 \begin{itemize}
-    \item Use \mintinline{text}{xxd} command to dump binary data into
-          hexadecimal data:
+    \item Use \mintinline{text}{xxd} to produce a hexadecimal dump:
           \begin{minted}{console}
             [admin]# xxd movies_binary_data movies_hex_data.txt
           \end{minted}
-    \item Use \mintinline{text}{grep} command to search for keyword
-          \mintinline{text}{Matrix}
+    \item Use \mintinline{text}{grep} to search for the keyword
+          \mintinline{text}{Matrix}:
           \begin{minted}[escapeinside=||]{console}
             [admin]# grep --line-number --context=3 'Matrix' ./movies_hex_data.txt
             |\textcolor{softgreen}{4899}|-00013220: 6261 636b 0775 7300 cf07 0000 6500 0000  back.us.....e...
@@ -142,16 +150,16 @@
             |\textcolor{softgreen}{4904}|-00013270: 4d0a 0000 0000 0900 3d00 0500 9209 1800  M.......=.......
             |\textcolor{softgreen}{4905}|-00013280: bf04 0000 1745 6e74 7261 706d 656e 7407  .....Entrapment.
           \end{minted}
-    \item This implies the row we are looking for is stored at the \textbf{9th}
-          page in the file. \textbf{Verbose explanation and verification will be
-          given later in the report.}
+    \item This indicates that the target tuple is stored on \textbf{page 9} of
+          the file. \textbf{\textit{A detailed explanation and verification
+          follow below.}}
 \end{itemize}
 
 \section{Field Decoding}
 
 \begin{itemize}
-    \item Let's take a deeper look into line \textbf{4901} to \textbf{4903},
-          which are the bytes in the range of \textbf{[13240,13270)}:
+    \item Consider lines \textbf{4901}--\textbf{4903}, which contain bytes in
+          the range \textbf{[0x13240, 0x13270)}:
           \begin{minted}[escapeinside=||]{console}
             |\textcolor{softgreen}{4901}|-00013240: 3e00 0500 9209 1800 |\textcolor{black}{c004 0000}| |\textcolor{red}{1754 6865}|  >............|\textcolor{red}{\textbf{The}}|
             |\textcolor{softgreen}{4902}|:00013250: |\textcolor{red}{204d 6174 7269 78}||\textcolor{cyan}{07 7573}| 0000 |\textcolor{black}{cf07 0000}|   |\textcolor{red}{\textbf{Matrix}}|.|\textcolor{cyan}{\textbf{us}}|......
@@ -160,7 +168,7 @@
 
     \item The marked bytes decode as follows. Integer values are stored in
           \textbf{little-endian} order. The two text fields use PostgreSQL
-          \textbf{shot varlena headers}.
+          \textbf{short varlena headers}.
 
           \textbf{\textit{These concepts will be discussed later in the
           report.}}
@@ -168,7 +176,7 @@
           \begin{table}[h]
               \centering
               \small
-              \begin{tabularx}{\textwidth}{@{}lll>{\raggedright\arraybackslash}X@{}}
+              \begin{tabular}{@{}llll@{}}
                   \toprule
                   Field                   & File offset               & Bytes                     & Decoding                                                                 \\
                   \midrule
@@ -180,7 +188,7 @@
                   \texttt{year\_released} & \texttt{0x1325C--0x1325F} & \texttt{cf 07 00 00}      & \textbf{little-endian} \texttt{int4}: \texttt{0x07cf} $\rightarrow$ 1999 \\
                   \texttt{runtime}        & \texttt{0x13260--0x13263} & \texttt{88 00 00 00}      & \textbf{little-endian} \texttt{int4}: \texttt{0x88} $\rightarrow$ 136    \\
                   \bottomrule
-              \end{tabularx}
+              \end{tabular}
           \end{table}
 \end{itemize}
 
@@ -189,37 +197,34 @@
 \subsection{Page}
 
 \begin{itemize}
-    \item As is explained in the postgres document\footnote{Database Page
+    \item As explained in the PostgreSQL documentation\footnote{Database Page
           Layout:\\
           \scriptsize\url{https://www.postgresql.org/docs/current/storage-page-layout.html}}
           \begin{enumerate}
-              \item Data in a table will be partitioned into multiple pages and
-                    stored in at least 1 file.
-              \item Tuples(rows) are stored in pages along with their
-                    information.
-              \item All pages are \textit{\textbf{logically equivalent}} and
-                    \textit{\textbf{share the SAME SIZE}} which is
-                    $8192\ bytes = 8\ KiB$ we've found out
-                    \hyperlink{page_size_link_target}{previously} in our
-                    experiment.
+              \item Table data is partitioned into multiple pages and stored in
+                    one or more files.
+              \item Tuples (rows) are stored in pages with page metadata.
+              \item Pages are \textbf{\textit{logically equivalent}} with
+                    \textbf{\textit{fixed sizes}}. In this experiment, each page
+                    is $8192\ \text{bytes} = 8\ \text{KiB}$, as verified
+                    \hyperlink{page_size_link_target}{previously}.
           \end{enumerate}
           \begin{figure}[htbp]
               \centering
               \includesvg[width=0.8\textwidth]{res/pagelayout.svg}
           \end{figure}
 
-    \item Thus, we derive a formula to caculate the page number(zero-based) of a
-          specified byte $x$. (The tuple begins at file offset \texttt{0x13248}
-          and the heap-page size is \texttt{8192}=\texttt{0x2000} bytes)
+    \item Thus, the zero-based page number of a byte at file offset $x$ is
+          computed as follows. The tuple begins at \texttt{0x13248}, and the
+          heap-page size is \texttt{8192} = \texttt{0x2000} bytes.
           \[
               \begin{aligned}
                   \text{page number} & = \left\lfloor \frac{x}{\text{page size}} \right\rfloor = \left\lfloor \frac{\texttt{0x13248}}{\texttt{0x2000}} \right\rfloor = 9 \\
                   \text{page offset} & = x \bmod \text{(page size)} = \texttt{0x13248} \bmod \texttt{0x2000} = \texttt{0x1248}
               \end{aligned}
           \]
-    \item We can simply verify this answer since postgres provides a
-          \mintinline{text}{ctid} which records the location of data in the
-          files:
+    \item This result can be verified with PostgreSQL's \mintinline{text}{ctid}
+          system column, which identifies the tuple's physical location:
 
           \begin{minted}{sql}
               SELECT ctid FROM movies WHERE title = 'The Matrix';
@@ -230,37 +235,36 @@
             (9,62)
             (1 row)
           \end{minted}
-          \textit{This implies that the row is the \textbf{62nd row} of the
-          \textbf{9th page} in the file.}
+          \textit{This identifies line pointer \textbf{62} on \textbf{page 9} of
+          the table file.}
 \end{itemize}
 
 \subsection{Tuple}
 
 \begin{itemize}
     \item A tuple stores a row in the database.
-    \item According to the PostgreSQL document\footnote{Table Row Layout:\\
-          \scriptsize\url{https://www.postgresql.org/docs/current/storage-page-layout.html#STORAGE-TUPLE-LAYOUT}},
-          there is a \textbf{fixed-size header} of 23 bytes for each tuple. Then
-          follows the user data.
-    \item For data with variable length, PostgreSQL developed a technique call
+    \item According to the PostgreSQL documentation\footnote{Table Row Layout:\\
+          \scriptsize\url{https://www.postgresql.org/docs/current/storage-page-layout.html\#STORAGE-TUPLE-LAYOUT}},
+          a tuple begins with a \textbf{23-byte base header}, followed by user
+          data. A null bitmap and alignment padding can enlarge the actual
+          header.
+    \item For variable-length data, PostgreSQL uses a technique called
           \textbf{\textit{TOAST}}\footnote{The Oversized-Attribute Storage
-          Technique(TOAST):\\
+          Technique (TOAST):\\
           \scriptsize\url{https://www.postgresql.org/docs/current/storage-toast.html}}
-          to store them in disk:
+          for on-disk storage:
           \begin{enumerate}
-              \item The normal variable-length data begins with a
-                    \textbf{4-bytes} header. The header records the total length
-                    of the variable-length data, \textbf{including the header},
-                    in bytes.
-              \item PostgreSQL also supports \textbf{1-byte} header in order to
-                    save space, which is actually the case in our experiment.
-                    (source code\footnote{Source code of 1-byte header in
-                    PostgreSQL:\\
-                    \scriptsize\url{https://github.com/postgres/postgres/blob/REL_18_7/src/include/varatt.h#L128}})
+              \item Normal variable-length data begins with a \textbf{4-byte}
+                    header. It records the total data length, \textbf{including
+                    the header}, in bytes.
+              \item PostgreSQL also supports a \textbf{1-byte} header to save
+                    space; this is the format used in this experiment. (source
+                    code\footnote{Source code of 1-byte header in PostgreSQL:\\
+                    \scriptsize\url{https://github.com/postgres/postgres/blob/REL_18_7/src/include/varatt.h\#L128}})
 
-              \item The lowest digit of the header is used \textbf{\textit{to
-                    distinguish the 2 cases}}. If it's \mintinline{text}{1}, the
-                    header only takes 1 bytes.
+              \item The least significant bit of the header
+                    \textbf{distinguishes the two formats}. If it is
+                    \mintinline{text}{1}, the header occupies one byte.
           \end{enumerate}
 \end{itemize}
 
@@ -275,8 +279,8 @@ Looking back at the binary data around \textit{The Matrix}:
 \begin{enumerate}
     \item \mintinline{text}{c004 0000}\quad\mintinline{text}{cf07 0000}\quad\mintinline{text}{8800 0000}:
 
-          These are integer data stored in \textbf{little-endian} format. Each
-          of them takes 4 bytes(8 hexadecimal digit).
+          These integer values are stored in \textbf{little-endian} format. Each
+          occupies 4 bytes (8 hexadecimal digits).
           \begin{center}
               \small
               \begin{tabular}{@{}llll@{}}
@@ -289,8 +293,8 @@ Looking back at the binary data around \textit{The Matrix}:
                   \bottomrule
               \end{tabular}
           \end{center}
-          This is determined by the \textbf{CPU architecture} which can be
-          verified by:
+          This byte order is determined by the \textbf{CPU architecture} and can
+          be verified with:
           \begin{minted}{console}
                         [admin]# lscpu | grep 'Byte Order'
                         Byte Order:                              Little Endian
@@ -298,15 +302,16 @@ Looking back at the binary data around \textit{The Matrix}:
     \item \mintinline{text}{1754 6865 204d 6174 7269 78}\quad\mintinline{text}{07 7573}:
 
           \begin{itemize}
-              \item \mintinline{text}{17} and \mintinline{text}{07} are 1-byte
-                    header of the strings, since the lowest digit of them is
-                    \mintinline{text}{1}.
-              \item Thus, the actual length of them is
-                    \mintinline{text}{17>>1=11} and \mintinline{text}{7>>1=3}
-                    which is correct in our case, including the header.
-              \item \mintinline{text}{54 6865 204d 6174 7269 78} decodes as
+              \item \mintinline{text}{17} and \mintinline{text}{07} are the
+                    1-byte headers for the respective strings, because their
+                    least significant bits are \mintinline{text}{1}.
+              \item Their encoded total lengths are
+                    \mintinline{text}{0x17 >> 1 = 11} and
+                    \mintinline{text}{0x07 >> 1 = 3}, respectively,
+                    \textbf{including the header bytes}.
+              \item \mintinline{text}{54 68 65 20 4d 61 74 72 69 78} decodes to
                     \mintinline{text}{The Matrix}.
-              \item \mintinline{text}{7573} decodes as \mintinline{text}{us}.
+              \item \mintinline{text}{75 73} decodes to \mintinline{text}{us}.
           \end{itemize}
 \end{enumerate}
 
