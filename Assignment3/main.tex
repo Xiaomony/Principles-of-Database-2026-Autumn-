@@ -1,0 +1,315 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.35cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{bold-extra}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\definecolor{darkblue}{HTML}{6394BD}
+\usepackage[colorlinks=true,urlcolor=darkblue,linkcolor=darkblue]{hyperref}
+\usepackage{minted}
+\usepackage{titling}
+\usepackage{amsmath}
+\usepackage{enotez}
+\usepackage{graphicx}
+\usepackage{svg}
+
+\setlist{noitemsep,topsep=3pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\renewcommand{\arraystretch}{1.15}
+
+% endnote
+\let\footnote=\endnote
+
+% minted settings
+\usemintedstyle{solarized-light}
+\setminted{
+    fontsize=\small, linenos, numbersep=8pt, frame=single, framerule=0.5pt,
+    framesep=3mm, rulecolor=\color{black}, breaklines, tabsize=4, autogobble
+}
+\renewcommand{\theFancyVerbLine}{ \sffamily\scriptsize\arabic{FancyVerbLine} }
+\definecolor{inlinebg}{RGB}{230,230,230}
+\setmintedinline{ bgcolor=inlinebg, fontsize=\normalsize }
+\definecolor{softgreen}{HTML}{91BC61}
+\definecolor{softred}{HTML}{E06C82}
+
+% title
+\title{Assignment3: Find a Movie in Database Files}
+\author{\textit{Yongheng Xiao} \quad \textit{12513002}}
+\date{}
+\predate{}
+\postdate{}
+\setlength{\droptitle}{-7em}
+
+% document
+\begin{document}
+\maketitle
+
+\section{Summary}
+
+\begin{itemize}
+    \item Data in the table \mintinline{text}{movies} is located at
+          \mintinline{text}{/var/lib/postgres/data/base/18587/18604}.
+    \item \textit{The Matrix} is the \textbf{62nd row(tuple)} of the \textbf{9th
+          page} in the file.
+    \item The actual data of this row, \textbf{excuding tuple header}, is
+          located in the range from \texttt{0x13248} bytes offset to
+          \texttt{0x13263} bytes offset in the file.
+\end{itemize}
+
+\section{Environment and Tools}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        CPU                               & Intel Core Ultra 9 275HX (24 cores)                  \\
+        Memory                            & 30 GiB                                               \\
+        Storage device                    & 953.9 GB NVMe SSD                                    \\
+        Experiment filesystem             & Btrfs, 226 GB partition                              \\
+        Host OS                           & Arch Linux (rolling)                                 \\
+        \textbf{Kernel}                   & \large\textbf{Linux 7.3.5-arch1-1, x86\_64}          \\
+        PostgreSQL client                 & \texttt{psql (PostgreSQL) 18.7}                      \\
+        \textbf{PostgreSQL server binary} & {\large\textbf{\texttt{postgres (PostgreSQL) 18.7}}} \\
+        \textbf{Hex-dump tool}            & \large\textbf{\texttt{xxd 2026-06-16}}               \\
+        \textbf{Pattern Searcher}         & \large\textbf{\texttt{grep (GNU grep) 3.12}}         \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Locating the Target File}
+
+\begin{itemize}
+    \item Use the following sql commands to obtain the relative information of
+          the current database and the table \mintinline{sql}|movies|:
+          \begin{minted}{sql}
+            SHOW server_version;
+            SHOW data_directory;
+            SHOW block_size;
+            SELECT pg_relation_filepath('movies');
+          \end{minted}
+          \begin{table}[h]
+              \centering
+              \small
+              \begin{tabular}{@{}ll@{}}
+                  \toprule
+                  Server version                        & \textit{18.7}                                             \\
+                  Data directory                        & \mintinline{text}{/var/lib/postgres/data}                 \\
+                  Heap-page size (\texttt{block\_size}) & \textit{\hypertarget{page_size_link_target}{8192(bytes)}} \\
+                  Table file path                       & \mintinline{text}{base/18587/18604}                       \\
+                  \bottomrule
+              \end{tabular}
+          \end{table}
+    \item Find that file in the filesystem:
+          \begin{minted}{console}
+            [root]# ls -lsah /var/lib/postgres/data/base/18587/18604
+            576K -rw------- 1 postgres postgres 576K Nov 22 11:42 /var/lib/postgres/data/base/18587/18604
+          \end{minted}
+
+    \item \textbf{For the security of the OS and database}, we copy the file to
+          somewhere else to analyze:
+          \begin{minted}{console}
+            [root]# cp /var/lib/postgres/data/base/18587/18604 \
+            > /home/admin/code/Projects/db_principles/Assignment3/movies_binary_data
+            [root]# chown -c admin \
+            > /home/admin/code/Projects/db_principles/Assignment3/movies_binary_data
+            changed ownership of '/home/admin/code/Projects/db_principles/Assignment3/movies_binary_data' from root to admin
+          \end{minted}
+\end{itemize}
+
+\section{Page and Tuple Inspection}
+
+\begin{itemize}
+    \item Use \mintinline{text}{xxd} command to dump binary data into
+          hexadecimal data:
+          \begin{minted}{console}
+            [admin]# xxd movies_binary_data movies_hex_data.txt
+          \end{minted}
+    \item Use \mintinline{text}{grep} command to search for keyword
+          \mintinline{text}{Matrix}
+          \begin{minted}[escapeinside=||]{console}
+            [admin]# grep --line-number --context=3 'Matrix' ./movies_hex_data.txt
+            |\textcolor{softgreen}{4899}|-00013220: 6261 636b 0775 7300 cf07 0000 6500 0000  back.us.....e...
+            |\textcolor{softgreen}{4900}|-00013230: 5842 0000 5842 0000 4f0a 0000 0000 0900  XB..XB..O.......
+            |\textcolor{softgreen}{4901}|-00013240: 3e00 0500 9209 1800 c004 0000 1754 6865  >............The
+            |\textcolor{softgreen}{4902}|:00013250: 204d 6174 7269 7807 7573 0000 cf07 0000   |\textcolor{softred}{\textbf{Matrix}}|.us......
+            |\textcolor{softgreen}{4903}|-00013260: 8800 0000 0000 0000 5842 0000 5842 0000  ........XB..XB..
+            |\textcolor{softgreen}{4904}|-00013270: 4d0a 0000 0000 0900 3d00 0500 9209 1800  M.......=.......
+            |\textcolor{softgreen}{4905}|-00013280: bf04 0000 1745 6e74 7261 706d 656e 7407  .....Entrapment.
+          \end{minted}
+    \item This implies the row we are looking for is stored at the \textbf{9th}
+          page in the file. \textbf{Verbose explanation and verification will be
+          given later in the report.}
+\end{itemize}
+
+\section{Field Decoding}
+
+\begin{itemize}
+    \item Let's take a deeper look into line \textbf{4901} to \textbf{4903},
+          which are the bytes in the range of \textbf{[13240,13270)}:
+          \begin{minted}[escapeinside=||]{console}
+            |\textcolor{softgreen}{4901}|-00013240: 3e00 0500 9209 1800 |\textcolor{black}{c004 0000}| |\textcolor{red}{1754 6865}|  >............|\textcolor{red}{\textbf{The}}|
+            |\textcolor{softgreen}{4902}|:00013250: |\textcolor{red}{204d 6174 7269 78}||\textcolor{cyan}{07 7573}| 0000 |\textcolor{black}{cf07 0000}|   |\textcolor{red}{\textbf{Matrix}}|.|\textcolor{cyan}{\textbf{us}}|......
+            |\textcolor{softgreen}{4903}|-00013260: |\textcolor{black}{8800 0000}| 0000 0000 5842 0000 5842 0000  ........XB..XB..
+          \end{minted}
+
+    \item The marked bytes decode as follows. Integer values are stored in
+          \textbf{little-endian} order. The two text fields use PostgreSQL
+          \textbf{shot varlena headers}.
+
+          \textbf{\textit{These concepts will be discussed later in the
+          report.}}
+
+          \begin{table}[h]
+              \centering
+              \small
+              \begin{tabularx}{\textwidth}{@{}lll>{\raggedright\arraybackslash}X@{}}
+                  \toprule
+                  Field                   & File offset               & Bytes                     & Decoding                                                                 \\
+                  \midrule
+                  \texttt{movieid}        & \texttt{0x13248--0x1324B} & \texttt{c0 04 00 00}      & \textbf{little-endian} \texttt{int4}: \texttt{0x04c0} $\rightarrow$ 1216 \\
+                  \texttt{title}          & \texttt{0x1324C--0x13256} & \texttt{17 54\dots 69 78} & \texttt{0x17} is the short varlena header                                \\
+                                          &                           &                           & the 10-byte payload is \texttt{The Matrix}                               \\
+                  \texttt{country}        & \texttt{0x13257--0x13259} & \texttt{07 75 73}         & \texttt{0x07} is the short varlena header                                \\
+                                          &                           &                           & \texttt{75 73} is ASCII \texttt{us}                                      \\
+                  \texttt{year\_released} & \texttt{0x1325C--0x1325F} & \texttt{cf 07 00 00}      & \textbf{little-endian} \texttt{int4}: \texttt{0x07cf} $\rightarrow$ 1999 \\
+                  \texttt{runtime}        & \texttt{0x13260--0x13263} & \texttt{88 00 00 00}      & \textbf{little-endian} \texttt{int4}: \texttt{0x88} $\rightarrow$ 136    \\
+                  \bottomrule
+              \end{tabularx}
+          \end{table}
+\end{itemize}
+
+\section{Explanation}
+
+\subsection{Page}
+
+\begin{itemize}
+    \item As is explained in the postgres document\footnote{Database Page
+          Layout:\\
+          \scriptsize\url{https://www.postgresql.org/docs/current/storage-page-layout.html}}
+          \begin{enumerate}
+              \item Data in a table will be partitioned into multiple pages and
+                    stored in at least 1 file.
+              \item Tuples(rows) are stored in pages along with their
+                    information.
+              \item All pages are \textit{\textbf{logically equivalent}} and
+                    \textit{\textbf{share the SAME SIZE}} which is
+                    $8192\ bytes = 8\ KiB$ we've found out
+                    \hyperlink{page_size_link_target}{previously} in our
+                    experiment.
+          \end{enumerate}
+          \begin{figure}[htbp]
+              \centering
+              \includesvg[width=0.8\textwidth]{res/pagelayout.svg}
+          \end{figure}
+
+    \item Thus, we derive a formula to caculate the page number(zero-based) of a
+          specified byte $x$. (The tuple begins at file offset \texttt{0x13248}
+          and the heap-page size is \texttt{8192}=\texttt{0x2000} bytes)
+          \[
+              \begin{aligned}
+                  \text{page number} & = \left\lfloor \frac{x}{\text{page size}} \right\rfloor = \left\lfloor \frac{\texttt{0x13248}}{\texttt{0x2000}} \right\rfloor = 9 \\
+                  \text{page offset} & = x \bmod \text{(page size)} = \texttt{0x13248} \bmod \texttt{0x2000} = \texttt{0x1248}
+              \end{aligned}
+          \]
+    \item We can simply verify this answer since postgres provides a
+          \mintinline{text}{ctid} which records the location of data in the
+          files:
+
+          \begin{minted}{sql}
+              SELECT ctid FROM movies WHERE title = 'The Matrix';
+          \end{minted}
+          \begin{minted}{text}
+            ctid
+            --------
+            (9,62)
+            (1 row)
+          \end{minted}
+          \textit{This implies that the row is the \textbf{62nd row} of the
+          \textbf{9th page} in the file.}
+\end{itemize}
+
+\subsection{Tuple}
+
+\begin{itemize}
+    \item A tuple stores a row in the database.
+    \item According to the PostgreSQL document\footnote{Table Row Layout:\\
+          \scriptsize\url{https://www.postgresql.org/docs/current/storage-page-layout.html#STORAGE-TUPLE-LAYOUT}},
+          there is a \textbf{fixed-size header} of 23 bytes for each tuple. Then
+          follows the user data.
+    \item For data with variable length, PostgreSQL developed a technique call
+          \textbf{\textit{TOAST}}\footnote{The Oversized-Attribute Storage
+          Technique(TOAST):\\
+          \scriptsize\url{https://www.postgresql.org/docs/current/storage-toast.html}}
+          to store them in disk:
+          \begin{enumerate}
+              \item The normal variable-length data begins with a
+                    \textbf{4-bytes} header. The header records the total length
+                    of the variable-length data, \textbf{including the header},
+                    in bytes.
+              \item PostgreSQL also supports \textbf{1-byte} header in order to
+                    save space, which is actually the case in our experiment.
+                    (source code\footnote{Source code of 1-byte header in
+                    PostgreSQL:\\
+                    \scriptsize\url{https://github.com/postgres/postgres/blob/REL_18_7/src/include/varatt.h#L128}})
+
+              \item The lowest digit of the header is used \textbf{\textit{to
+                    distinguish the 2 cases}}. If it's \mintinline{text}{1}, the
+                    header only takes 1 bytes.
+          \end{enumerate}
+\end{itemize}
+
+\subsection{Decoding}
+
+Looking back at the binary data around \textit{The Matrix}:
+\begin{minted}[escapeinside=||]{console}
+    |\textcolor{softgreen}{4901}|-00013240: 3e00 0500 9209 1800 |\textcolor{black}{c004 0000}| |\textcolor{red}{1754 6865}|  >............|\textcolor{red}{\textbf{The}}|
+    |\textcolor{softgreen}{4902}|:00013250: |\textcolor{red}{204d 6174 7269 78}||\textcolor{cyan}{07 7573}| 0000 |\textcolor{black}{cf07 0000}|   |\textcolor{red}{\textbf{Matrix}}|.|\textcolor{cyan}{\textbf{us}}|......
+    |\textcolor{softgreen}{4903}|-00013260: |\textcolor{black}{8800 0000}| 0000 0000 5842 0000 5842 0000  ........XB..XB..
+\end{minted}
+\begin{enumerate}
+    \item \mintinline{text}{c004 0000}\quad\mintinline{text}{cf07 0000}\quad\mintinline{text}{8800 0000}:
+
+          These are integer data stored in \textbf{little-endian} format. Each
+          of them takes 4 bytes(8 hexadecimal digit).
+          \begin{center}
+              \small
+              \begin{tabular}{@{}llll@{}}
+                  \toprule
+                  Little-endian bytes  & Canonical hexadecimal value & Decimal value & Database column         \\
+                  \midrule
+                  \texttt{c0 04 00 00} & \texttt{0x000004c0}         & 1216          & \texttt{movieid}        \\
+                  \texttt{cf 07 00 00} & \texttt{0x000007cf}         & 1999          & \texttt{year\_released} \\
+                  \texttt{88 00 00 00} & \texttt{0x00000088}         & 136           & \texttt{runtime}        \\
+                  \bottomrule
+              \end{tabular}
+          \end{center}
+          This is determined by the \textbf{CPU architecture} which can be
+          verified by:
+          \begin{minted}{console}
+                        [admin]# lscpu | grep 'Byte Order'
+                        Byte Order:                              Little Endian
+                    \end{minted}
+    \item \mintinline{text}{1754 6865 204d 6174 7269 78}\quad\mintinline{text}{07 7573}:
+
+          \begin{itemize}
+              \item \mintinline{text}{17} and \mintinline{text}{07} are 1-byte
+                    header of the strings, since the lowest digit of them is
+                    \mintinline{text}{1}.
+              \item Thus, the actual length of them is
+                    \mintinline{text}{17>>1=11} and \mintinline{text}{7>>1=3}
+                    which is correct in our case, including the header.
+              \item \mintinline{text}{54 6865 204d 6174 7269 78} decodes as
+                    \mintinline{text}{The Matrix}.
+              \item \mintinline{text}{7573} decodes as \mintinline{text}{us}.
+          \end{itemize}
+\end{enumerate}
+
+\printendnotes
+
+\end{document}

@@ -6,3 +6,70 @@
 out/
 .DS_Store
 /postgres/
+
+# LaTeX auxiliary files
+_minted/
+svg-inkscape/
+*.ent
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.synctex(busy)
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.blg
+*.nav
+*.snm
+*.vrb
+*.xdv
+
+# Index and glossary
+*.idx
+*.ilg
+*.ind
+*.ist
+*.glo
+*.glg
+*.gls
+*.acn
+*.acr
+*.alg
+*.nlo
+*.nls
+*.nlg
+
+# Bibliography
+*.thm
+*.loa
+
+# Beamer / presentations
+*.pre
+*.4ct
+*.4tc
+*.idv
+*.lg
+*.tmp
+*.xref
+
+# latexmk
+/latexmkrc.backup
+
+# Build directories
+/build/
+/out/
+/_output/
+
+# Editor temporary files
+*~
+*.swp
+*.swo
+*.bak
+.DS_Store
