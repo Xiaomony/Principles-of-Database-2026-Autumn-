@@ -1,0 +1,54 @@
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[margin=2.15cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{bold-extra}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\definecolor{darkblue}{HTML}{6394BD}
+\usepackage{xurl}
+\usepackage[colorlinks=true,urlcolor=darkblue,linkcolor=darkblue]{hyperref}
+\usepackage{minted}
+\usepackage{titling}
+\usepackage{amsmath}
+\usepackage{enotez}
+\usepackage{graphicx}
+\usepackage{svg}
+
+% title
+\title{Assignment4: Find Similar Movies}
+\author{\textit{Yongheng Xiao} \quad \textit{12513002}}
+\date{}
+\predate{}
+\postdate{}
+\setlength{\droptitle}{-8em}
+
+% document
+\begin{document}
+\maketitle
+
+\section{Environment and Tools}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        CPU                                         & Intel Core Ultra 9 275HX (24 cores)                  \\
+        Memory                                      & 30 GiB                                               \\
+        Storage device                              & 953.9 GB NVMe SSD                                    \\
+        Experiment filesystem                       & Btrfs, 226 GB partition                              \\
+        Host OS                                     & Arch Linux (rolling)                                 \\
+        \textbf{Kernel}                             & \large\textbf{Linux 7.3.5-arch1-1, x86\_64}          \\
+        PostgreSQL client                           & \texttt{psql (PostgreSQL) 18.7}                      \\
+        \textbf{PostgreSQL server binary}           & {\large\textbf{\texttt{postgres (PostgreSQL) 18.7}}} \\
+        \textbf{Python}                             & \large\textbf{\texttt{Python 3.14.10}}               \\
+        \textbf{Python PostgreSQL database adapter} & \large\textbf{\texttt{psycopg 3.3.9}}                \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\end{document}
