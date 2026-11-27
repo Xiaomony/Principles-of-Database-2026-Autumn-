@@ -18,6 +18,31 @@
 \usepackage{graphicx}
 \usepackage{svg}
 
+\setlist{noitemsep,topsep=1pt,partopsep=0pt,parsep=0pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.2em}
+\renewcommand{\arraystretch}{1.05}
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\intextsep}{5pt plus 2pt minus 2pt}
+\setlength{\abovedisplayskip}{5pt}
+\setlength{\belowdisplayskip}{5pt}
+
+% endnote
+\let\footnote=\endnote
+
+% minted settings
+\usemintedstyle{solarized-light}
+\setminted{
+    fontsize=\footnotesize, linenos, numbersep=6pt, frame=single,
+    framerule=0.5pt, framesep=2mm, rulecolor=\color{black}, breaklines,
+    tabsize=4, autogobble
+}
+\renewcommand{\theFancyVerbLine}{ \sffamily\scriptsize\arabic{FancyVerbLine} }
+\definecolor{inlinebg}{RGB}{230,230,230}
+\setmintedinline{ bgcolor=inlinebg, fontsize=\normalsize }
+\definecolor{softgreen}{HTML}{91BC61}
+\definecolor{softred}{HTML}{E06C82}
+
 % title
 \title{Assignment4: Find Similar Movies}
 \author{\textit{Yongheng Xiao} \quad \textit{12513002}}
@@ -47,14 +72,55 @@
         \textbf{PostgreSQL server binary}           & {\large\textbf{\texttt{postgres (PostgreSQL) 18.7}}} \\
         \textbf{Python}                             & \large\textbf{\texttt{Python 3.14.10}}               \\
         \textbf{Python PostgreSQL database adapter} & \large\textbf{\texttt{psycopg 3.3.9}}                \\
+        \textbf{Python http client}                 & \large\textbf{\texttt{httpx 0.28.1}}                 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-\section{Crawl Summary Data}
+\section{Collecting Summary Data}
 
-We obtain movie summaries from TMDB\footnote{The Movie Database:\\
-\scriptsize\url{https://www.themoviedb.org/}}
+We obtain movie summaries from the website \textbf{\textit{The Movie
+Database(TMDB)}}\footnote{The Movie Database\\
+\scriptsize\url{https://www.themoviedb.org/}}:
+
+\begin{enumerate}
+    \item According to the \textbf{\textit{TMDB delevoper
+          document}}\footnote{TMDB developer document\\
+          \scriptsize\url{https://developer.themoviedb.org/docs/authentication-application}},
+          register an account and request an API key.
+    \item Use python to query data from database. And for each movie, we search
+          for its summary in \textit{TMDB} database, using relative
+          api\footnote{TMDB movie searching api\\
+          \scriptsize\url{https://developer.themoviedb.org/reference/search-movie}}.
+          \begin{itemize}
+              \item Use \textbf{\texttt{psycopg}} to query from
+                    \mintinline{text}{movies} table.
+              \item Send query request to \textit{TMDB}, mathcing movies with
+                    their \textbf{title, region, and released year}.
+              \item Some movies may not be found. That's because the released
+                    year may be incorrect in the \mintinline{text}{filedb}. If
+                    so, ignore the released year condition and send the request
+                    again.
+              \item If the movie still can't be found, which is mainly caused by
+                    a incorrect title, we \textbf{store them in a local
+                    \texttt{csv} file}.
+              \item Then use \textbf{AI} to generate a python function that
+                    returns the corrcect name of these movies. Repeat the
+                    process above again, but call this function to get the
+                    correct film name for the 3rd attempt when it fails in the
+                    first 2 requests.
+          \end{itemize}
+    \item As a result, \textbf{\textit{\texttt{8979}}} movies are found and
+          \textbf{\textit{\texttt{225}}} aren't.
+          \begin{figure}[htbp]
+              \centering
+              \includegraphics[width=0.8\textwidth]{./res/movie_summaries.png}
+          \end{figure}
+    \item For more about the python implementation of this process,
+          \textbf{\textit{source code is avaliable on
+          Github}}\footnote{\mintinline{text}{crawl_summary_data.py} on Github\\
+          \scriptsize\url{https://github.com/Xiaomony/Principles-of-Database-2026-Autumn-/blob/main/Assignment4/crawl_summary_data.py}}.
+\end{enumerate}
 
 \printendnotes
 \end{document}

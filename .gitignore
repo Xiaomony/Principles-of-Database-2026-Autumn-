@@ -1,5 +1,6 @@
 TMDB_api_token.txt
-not_found_movies.csv
+not_found_movies*.csv
+__pycache__/
 
 *.pdf
 *.jar

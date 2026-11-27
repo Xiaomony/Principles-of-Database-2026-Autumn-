@@ -3,10 +3,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import psycopg
+from correct_title import correct_title
 from tqdm import tqdm
 
 TABLE_NAME = "movie_summary"
-MAX_THREADS = 8
+MAX_THREADS = 20
 URL = "https://api.themoviedb.org/3/search/movie"
 
 
@@ -20,11 +21,13 @@ def http_get(client: httpx.Client, title: str, region: str, year: int | None):
 
 
 def query_movies_from_web(
-    client: httpx.Client, title: str, region: str, year: int
+    client: httpx.Client, movieid: int, title: str, region: str, year: int
 ) -> dict | None:
+    # first attempt
     results = http_get(client, title, region, year)
     if len(results) > 0:
         return results[0]
+    # second attempt: query without release year
     results = http_get(client, title, region, None)
     if len(results) > 0:
         min_release_year_diff = 10000
@@ -37,6 +40,12 @@ def query_movies_from_web(
                 min_release_year_diff = abs(release_year - year)
                 target_movie = x
         return target_movie
+    # third attempt: using corrected title
+    corrected_title = correct_title(movieid)
+    if corrected_title is not None:
+        results = http_get(client, corrected_title, region, None)
+        if len(results) > 0:
+            return results[0]
     return None
 
 
@@ -66,7 +75,9 @@ def crawl_and_insert(
 
     # multi-thread crawling
     def worker(record):
-        return record, query_movies_from_web(client, record[1], record[2], record[3])
+        return record, query_movies_from_web(
+            client, record[0], record[1], record[2], record[3]
+        )
 
     with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         results = executor.map(worker, select_cursor, buffersize=MAX_THREADS * 3)
@@ -84,7 +95,9 @@ def crawl_and_insert(
         if batch:
             insert(batch)
 
-        print(f"{found_movies_count} movies were found and inserted into database")
+        print(
+            f"\n{found_movies_count} movies were found and inserted into database\n{len(not_found_movies)} movies were not found"
+        )
         with open("not_found_movies.csv", "w", encoding="utf-8-sig", newline="") as f:
             writer = csv.writer(f)
             writer.writerow(["movieid", "title", "country", "year_released"])
