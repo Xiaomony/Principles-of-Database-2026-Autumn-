@@ -1,24 +1,27 @@
 import csv
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import psycopg
 from tqdm import tqdm
 
 TABLE_NAME = "movie_summary"
+MAX_THREADS = 8
 URL = "https://api.themoviedb.org/3/search/movie"
+
+
+def http_get(client: httpx.Client, title: str, region: str, year: int | None):
+    resp = client.get(
+        URL,
+        params={"query": title, "year": year, "region": region},
+    )
+    resp.raise_for_status()
+    return resp.json()["results"]
 
 
 def query_movies_from_web(
     client: httpx.Client, title: str, region: str, year: int
 ) -> dict | None:
-    def http_get(client: httpx.Client, title: str, region: str, year: int | None):
-        resp = client.get(
-            URL,
-            params={"query": title, "year": year, "region": region},
-        )
-        resp.raise_for_status()
-        return resp.json()["results"]
-
     results = http_get(client, title, region, year)
     if len(results) > 0:
         return results[0]
@@ -61,24 +64,31 @@ def crawl_and_insert(
         )
         batch.clear()
 
-    for record in tqdm(select_cursor, desc="Crawling movies", total=QUERY_LIMIT):
-        target_movie = query_movies_from_web(client, record[1], record[2], record[3])
-        if target_movie is None:
-            not_found_movies.append(record)
-            continue
-        batch.append((record[0], target_movie["overview"]))
-        if len(batch) >= BATCH_SIZE:
+    # multi-thread crawling
+    def worker(record):
+        return record, query_movies_from_web(client, record[1], record[2], record[3])
+
+    with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+        results = executor.map(worker, select_cursor, buffersize=MAX_THREADS * 3)
+        for record, target_movie in tqdm(
+            results, desc="Crawling movies", total=QUERY_LIMIT
+        ):
+            if target_movie is None:
+                not_found_movies.append(record)
+                continue
+            batch.append((record[0], target_movie["overview"]))
+            if len(batch) >= BATCH_SIZE:
+                insert(batch)
+            found_movies_count += 1
+
+        if batch:
             insert(batch)
-        found_movies_count += 1
 
-    if batch:
-        insert(batch)
-
-    print(f"{found_movies_count} movies were found and inserted into database")
-    with open("not_found_movies.csv", "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["movieid", "title", "country", "year_released"])
-        writer.writerows(not_found_movies)
+        print(f"{found_movies_count} movies were found and inserted into database")
+        with open("not_found_movies.csv", "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["movieid", "title", "country", "year_released"])
+            writer.writerows(not_found_movies)
 
 
 def main():
